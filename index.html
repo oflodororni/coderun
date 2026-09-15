@@ -482,7 +482,10 @@
         resetVisuals(); running = true; statePill.textContent = 'EJECUTANDO'; statePill.classList.add('running'); hudState.textContent = 'EJECUTANDO';
         activate(0, '', 'VELOCIDAD 6', 24);
         later(() => activate(1, 'running', 'CORRIENDO', 39), 800);
-        later(() => { hero.style.left = '46%'; }, 1250);
+        // Coreografía fija para la maqueta: supera la caja antes de llegar al hueco.
+        later(() => { hero.className = 'hero-wrap jumping'; hero.style.left = '28%'; actionChip.textContent = 'OBSTÁCULO'; }, 1250);
+        later(() => { hero.style.left = '45%'; }, 1600);
+        later(() => { hero.className = 'hero-wrap running'; actionChip.textContent = 'CORRIENDO'; }, 2200);
         later(() => activate(2, 'jumping', 'SALTANDO', 57), 2350);
         later(() => { hero.style.left = '63%'; }, 2750);
         later(() => activate(3, 'shooting', 'PULSO DE CÓDIGO', 76), 3650);
