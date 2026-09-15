@@ -9,7 +9,7 @@
   const TYPES = Object.freeze({ RUN: 'RUN', JUMP: 'JUMP', CROUCH: 'CROUCH', SHOOT: 'SHOOT', STOP: 'STOP', SPEED: 'SPEED', IF: 'IF' });
   const CONDITIONS = Object.freeze({ GAP_AHEAD: 'GAP_AHEAD', OBSTACLE_AHEAD: 'OBSTACLE_AHEAD', ENEMY_NEAR: 'ENEMY_NEAR' });
   const SPEEDS = Object.freeze([2, 4, 6, 8, 10]);
-  const WORLD = Object.freeze({ start: .18, obstacle: { x: .35, width: .038, height: .115 }, gap: { start: .55, end: .64 }, bug: { x: .69, width: .035 }, goal: .935, heroWidth: .045 });
+  const WORLD = Object.freeze({ start: .18, obstacle: { x: .35, width: .038, height: .115 }, gap: { start: .55, end: .64 }, bug: { x: .75, width: .035 }, goal: .935, heroWidth: .045 });
   let nextId = 1;
 
   function makeNode(type, options = {}) {
@@ -72,14 +72,14 @@
     return true;
   }
 
-  function moveNode(nodes, id, parentId = null, index = null) {
+  function moveNode(nodes, id, parentId = null, index = null, indexAfterRemoval = false) {
     const node = findNode(nodes, id);
     if (!node || id === parentId || (parentId && !isAction(node))) return false;
     const parent = parentId ? findNode(nodes, parentId) : null;
     if (parentId && parent?.type !== TYPES.IF) return false;
     const origin = locate(nodes, id);
     if (!origin) return false;
-    const adjusted = origin.list === (parent ? parent.actions : nodes) && index !== null && origin.index < index ? index - 1 : index;
+    const adjusted = !indexAfterRemoval && origin.list === (parent ? parent.actions : nodes) && index !== null && origin.index < index ? index - 1 : index;
     removeNode(nodes, id);
     insertNode(nodes, node, parentId, adjusted);
     return true;
@@ -102,7 +102,7 @@
   function createGame(program) {
     const script = cloneProgram(program);
     const game = {
-      program: script, pc: 0, x: WORLD.start, y: 0, vy: 0, speed: 6, moving: false,
+      program: script, pc: 0, rules: [], activeUntil: 0, x: WORLD.start, y: 0, vy: 0, speed: 6, moving: false,
       pose: 'idle', crouchUntil: 0, poseUntil: 0, clock: 0, bugAlive: true,
       status: 'ready', outcome: null, activeId: null, flashId: null, flashUntil: 0,
       lastAction: null
@@ -123,7 +123,7 @@
     }
     if (condition === CONDITIONS.ENEMY_NEAR) {
       const distance = WORLD.bug.x - front;
-      return game.bugAlive && distance >= -.01 && distance <= .105;
+      return game.bugAlive && distance >= -.01 && distance <= .045;
     }
     return false;
   }
@@ -159,20 +159,31 @@
     let steps = 0;
     while (game.status === 'running' && game.pc < game.program.length && steps++ < 25) {
       const node = game.program[game.pc];
-      game.activeId = node.id;
       if (node.type === TYPES.IF) {
-        if (!sensor(game, node.condition)) return; // El bloque espera al mundo, no a una respuesta predefinida.
+        // SI registra una regla reactiva; nunca detiene el programa esperando un sensor.
+        game.rules.push({ node, wasTrue: false });
         game.pc++;
-        for (const action of node.actions) {
-          perform(game, action);
-          if (game.status !== 'running') break;
-        }
         continue;
       }
       perform(game, node);
       game.pc++;
     }
-    if (game.status === 'running' && game.pc >= game.program.length) game.activeId = game.moving ? game.program.findLast(node => node.type === TYPES.RUN)?.id || null : null;
+  }
+
+  function evaluateRules(game) {
+    for (const rule of game.rules) {
+      if (game.status !== 'running') break;
+      const isTrue = sensor(game, rule.node.condition);
+      if (isTrue && !rule.wasTrue) {
+        game.activeId = rule.node.id;
+        game.activeUntil = game.clock + .55;
+        for (const action of rule.node.actions) {
+          perform(game, action);
+          if (game.status !== 'running') break;
+        }
+      }
+      rule.wasTrue = isTrue;
+    }
   }
 
   function tick(game, dt = 1 / 60) {
@@ -180,7 +191,9 @@
     dt = Math.max(0, Math.min(dt, .05));
     game.clock += dt;
     advanceProgram(game);
+    evaluateRules(game);
     if (game.status !== 'running') return game;
+    if (game.clock >= game.activeUntil) game.activeId = game.moving ? game.program.findLast(node => node.type === TYPES.RUN)?.id || null : null;
 
     const prevX = game.x;
     if (game.moving) game.x += game.speed * .026 * dt;

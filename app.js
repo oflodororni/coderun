@@ -31,7 +31,8 @@
   let frameId = 0;
   let lastFrame = 0;
   let accumulator = 0;
-  let dragPayload = null;
+  let pointerDrag = null;
+  let suppressLibraryClickUntil = 0;
 
   // Se conserva la secuencia de introducción del Sprint 00.
   if (new URLSearchParams(location.search).has('skip-intro')) intro.classList.add('is-done');
@@ -53,23 +54,10 @@
   }
   function hideHint() { feedback.classList.remove('is-visible'); }
 
-  function seedProgram() {
-    program = [C.makeNode(C.TYPES.SPEED, { value: 6 }), C.makeNode(C.TYPES.RUN)];
-    for (const [condition, action] of [
-      [C.CONDITIONS.OBSTACLE_AHEAD, C.TYPES.JUMP],
-      [C.CONDITIONS.GAP_AHEAD, C.TYPES.JUMP],
-      [C.CONDITIONS.ENEMY_NEAR, C.TYPES.SHOOT]
-    ]) {
-      const branch = C.makeNode(C.TYPES.IF, { condition });
-      branch.actions.push(C.makeNode(action));
-      program.push(branch);
-    }
-  }
-
   function renderNode(node) {
     if (node.type === C.TYPES.IF) {
       const title = conditions[node.condition];
-      return `<div class="program-structure" draggable="true" data-id="${node.id}">
+      return `<div class="program-structure" data-id="${node.id}">
         <div class="program-title"><i>?</i>${title}<button class="delete-block" type="button" data-delete="${node.id}" aria-label="Eliminar ${title}">×</button></div>
         <div class="program-body" data-parent-id="${node.id}">${node.actions.map(renderNode).join('')}</div>
       </div>`;
@@ -77,7 +65,7 @@
     const [icon, label, style] = labels[node.type];
     const speedSelect = node.type === C.TYPES.SPEED
       ? `<select data-speed="${node.id}" aria-label="Seleccionar velocidad">${C.SPEEDS.map(value => `<option value="${value}" ${value === node.value ? 'selected' : ''}>${value}</option>`).join('')}</select>` : '';
-    return `<div class="program-piece ${style}" draggable="true" data-id="${node.id}"><i>${icon}</i>${label}${speedSelect}<button class="delete-block" type="button" data-delete="${node.id}" aria-label="Eliminar ${label}">×</button></div>`;
+    return `<div class="program-piece ${style}" data-id="${node.id}"><i>${icon}</i>${label}${speedSelect}<button class="delete-block" type="button" data-delete="${node.id}" aria-label="Eliminar ${label}">×</button></div>`;
   }
   function renderProgram() {
     C.validateProgram(program);
@@ -90,71 +78,173 @@
     });
   }
 
-  function dragData(event) {
-    // Chrome/Edge no permiten leer getData durante dragover; se conserva el dato del dragstart local.
-    if (dragPayload) return dragPayload;
-    try { return JSON.parse(event.dataTransfer.getData('text/plain')); } catch { return null; }
-  }
-  function clearDropStyles() { document.querySelectorAll('.drop-before,.drop-after,.drop-into').forEach(element => element.classList.remove('drop-before', 'drop-after', 'drop-into')); }
-  function targetForDrop(event) {
-    const piece = event.target.closest('.program-piece,.program-structure');
-    const body = event.target.closest('.program-body');
-    if (body && piece === body.parentElement) return { parentId: body.dataset.parentId, index: null, mark: body, className: 'drop-into' };
-    if (piece && piece !== stack) {
-      const list = piece.parentElement;
+  function rows(list) { return [...list.children].filter(child => child.matches('.program-piece,.program-structure')); }
+  function candidateAt(x, y) {
+    const hit = document.elementFromPoint(x, y);
+    if (!hit) return null;
+    if (trash.contains(hit)) return pointerDrag.source === 'program' ? { kind: 'trash' } : null;
+    if (!canvas.contains(hit)) return null;
+    const body = hit.closest('.program-body');
+    const row = hit.closest('.program-piece,.program-structure');
+    if (body && row === body.parentElement) return { kind: 'inside', list: body, parentId: body.dataset.parentId, index: rows(body).length };
+    if (row && stack.contains(row)) {
+      const list = row.parentElement;
       const parentId = list.classList.contains('program-body') ? list.dataset.parentId : null;
-      const siblings = [...list.children].filter(child => child.matches('.program-piece,.program-structure'));
-      const after = event.clientY > piece.getBoundingClientRect().top + piece.getBoundingClientRect().height / 2;
-      return { parentId, index: siblings.indexOf(piece) + Number(after), mark: piece, className: after ? 'drop-after' : 'drop-before' };
+      const after = y >= row.getBoundingClientRect().top + row.getBoundingClientRect().height / 2;
+      return { kind: after ? 'after' : 'before', list, parentId, index: rows(list).indexOf(row) + Number(after), row };
     }
-    if (body) return { parentId: body.dataset.parentId, index: null, mark: body, className: 'drop-into' };
-    return { parentId: null, index: null, mark: stack, className: 'drop-into' };
+    if (body) return { kind: 'inside', list: body, parentId: body.dataset.parentId, index: rows(body).length };
+    return { kind: 'inside', list: stack, parentId: null, index: rows(stack).length };
   }
-  function canInsert(data, target) {
-    if (!data || game.status === 'running') return false;
-    const type = data.source === 'library' ? data.type : C.findNode(program, data.id)?.type;
-    return !!type && (!target.parentId || type !== C.TYPES.IF);
+  function allowed(candidate) {
+    return candidate && game.status !== 'running' && (candidate.kind === 'trash' || !candidate.parentId || pointerDrag.type !== C.TYPES.IF && pointerDrag.id !== candidate.parentId);
   }
-
-  library.addEventListener('dragstart', event => {
-    const block = event.target.closest('.code-block');
-    if (!block || game.status === 'running') { event.preventDefault(); return; }
-    dragPayload = { source: 'library', type: block.dataset.type, condition: block.dataset.condition || null };
-    event.dataTransfer.setData('text/plain', JSON.stringify(dragPayload));
-    event.dataTransfer.effectAllowed = 'copy';
-  });
-  stack.addEventListener('dragstart', event => {
-    if (event.target.closest('button,select') || game.status === 'running') { event.preventDefault(); return; }
-    const piece = event.target.closest('[data-id]');
-    if (!piece) { event.preventDefault(); return; }
-    dragPayload = { source: 'program', id: piece.dataset.id };
-    event.dataTransfer.setData('text/plain', JSON.stringify(dragPayload));
-    event.dataTransfer.effectAllowed = 'move';
-  });
-  stack.addEventListener('dragover', event => {
-    const data = dragData(event); const target = targetForDrop(event);
-    if (!canInsert(data, target)) return;
-    event.preventDefault(); clearDropStyles(); target.mark.classList.add(target.className);
-    event.dataTransfer.dropEffect = data.source === 'library' ? 'copy' : 'move';
-  });
-  stack.addEventListener('drop', event => {
-    const data = dragData(event); const target = targetForDrop(event);
-    clearDropStyles();
-    if (!canInsert(data, target)) { hint('Dentro de una condición solo van acciones.'); return; }
-    event.preventDefault();
-    if (data.source === 'library') {
-      const node = C.makeNode(data.type, { condition: data.condition, value: 6 });
-      C.insertNode(program, node, target.parentId, target.index);
-    } else C.moveNode(program, data.id, target.parentId, target.index);
-    dragPayload = null; renderProgram(); hideHint();
-  });
-  stack.addEventListener('dragend', () => { dragPayload = null; clearDropStyles(); });
-  library.addEventListener('dragend', () => { dragPayload = null; clearDropStyles(); });
+  function beginFloating() {
+    const drag = pointerDrag;
+    if (!drag || drag.started) return;
+    drag.started = true;
+    const rect = drag.sourceElement.getBoundingClientRect();
+    const width = Math.min(rect.width, drag.source === 'library' ? 260 : 420);
+    drag.offsetX = Math.max(15, Math.min(drag.startX - rect.left, width - 15));
+    drag.offsetY = Math.max(12, Math.min(drag.startY - rect.top, rect.height - 8));
+    drag.float = drag.source === 'library' ? drag.sourceElement.cloneNode(true) : drag.sourceElement;
+    drag.float.classList.add('drag-float');
+    drag.float.style.width = `${width}px`;
+    if (drag.source === 'program') {
+      drag.placeholder = document.createElement('div');
+      drag.placeholder.className = 'drag-placeholder';
+      drag.placeholder.style.minHeight = `${Math.max(32, rect.height)}px`;
+      drag.sourceElement.replaceWith(drag.placeholder);
+    }
+    document.body.appendChild(drag.float);
+    document.body.classList.add('is-pointer-dragging');
+    canvas.classList.toggle('dragging-action', drag.type !== C.TYPES.IF);
+    drag.sourceElement.classList?.add('source-copying');
+  }
+  function moveFloating(x, y) {
+    const drag = pointerDrag;
+    if (!drag?.started) return;
+    drag.float.style.transform = `translate3d(${x - drag.offsetX}px, ${y - drag.offsetY}px, 0) rotate(-2deg) scale(1.025)`;
+  }
+  function flipReflow(before) {
+    for (const row of stack.querySelectorAll('.program-piece,.program-structure')) {
+      const old = before.get(row);
+      if (!old) continue;
+      const next = row.getBoundingClientRect();
+      const dx = old.left - next.left, dy = old.top - next.top;
+      if (Math.abs(dx) + Math.abs(dy) > 2) row.animate([{ transform: `translate(${dx}px, ${dy}px)` }, { transform: 'translate(0, 0)' }], { duration: 170, easing: 'cubic-bezier(.2,.7,.2,1)' });
+    }
+  }
+  function placePlaceholder(candidate) {
+    const drag = pointerDrag;
+    if (!drag.placeholder) {
+      drag.placeholder = document.createElement('div');
+      drag.placeholder.className = 'drag-placeholder';
+      drag.placeholder.style.minHeight = drag.type === C.TYPES.IF ? '66px' : '34px';
+    }
+    const key = `${candidate.parentId || 'root'}:${candidate.index}:${candidate.kind}`;
+    if (drag.candidateKey === key) return;
+    const before = new Map([...stack.querySelectorAll('.program-piece,.program-structure')].map(row => [row, row.getBoundingClientRect()]));
+    const normalRows = rows(candidate.list);
+    candidate.list.insertBefore(drag.placeholder, normalRows[candidate.index] || null);
+    drag.placeholder.dataset.slot = candidate.kind === 'before' ? 'ANTES' : candidate.kind === 'after' ? 'DESPUÉS' : candidate.parentId ? 'DENTRO' : 'AL FINAL';
+    drag.candidateKey = key;
+    flipReflow(before);
+  }
+  function updateTarget(x, y) {
+    const drag = pointerDrag;
+    if (!drag?.started) return;
+    drag.lastX = x;
+    drag.lastY = y;
+    const bounds = canvas.getBoundingClientRect();
+    if (x >= bounds.left && x <= bounds.right) {
+      if (y > bounds.bottom - 28) canvas.scrollTop += 10;
+      else if (y < bounds.top + 28) canvas.scrollTop -= 10;
+    }
+    const candidate = candidateAt(x, y);
+    document.querySelectorAll('.program-body').forEach(body => body.classList.remove('is-target'));
+    trash.classList.toggle('is-target', candidate?.kind === 'trash');
+    if (!allowed(candidate)) {
+      drag.candidate = null; drag.candidateKey = null;
+      if (drag.placeholder && drag.source === 'library') drag.placeholder.remove();
+      return;
+    }
+    drag.candidate = candidate;
+    if (candidate.kind === 'trash') { drag.placeholder?.remove(); drag.candidateKey = null; return; }
+    placePlaceholder(candidate);
+    if (candidate.parentId) candidate.list.classList.add('is-target');
+  }
+  function cancelPointerDrag() {
+    const drag = pointerDrag;
+    if (!drag) return;
+    drag.float?.remove(); drag.placeholder?.remove();
+    drag.sourceElement.classList?.remove('source-copying');
+    document.body.classList.remove('is-pointer-dragging');
+    canvas.classList.remove('dragging-action');
+    document.querySelectorAll('.program-body').forEach(body => body.classList.remove('is-target'));
+    trash.classList.remove('is-target');
+    pointerDrag = null;
+    if (drag.started) renderProgram();
+  }
+  function finishPointerDrag(x, y) {
+    const drag = pointerDrag;
+    if (!drag) return;
+    if (!drag.started) { pointerDrag = null; return; }
+    // El placeholder desplaza las filas: conservar el destino visible si el
+    // cursor no se movió desde el último pointermove.
+    if (!drag.candidate || Math.hypot(x - drag.lastX, y - drag.lastY) > 5) updateTarget(x, y);
+    const candidate = drag.candidate;
+    let insertedId = null;
+    if (candidate?.kind === 'trash' && drag.source === 'program') C.removeNode(program, drag.id);
+    else if (candidate && candidate.kind !== 'trash') {
+      if (drag.source === 'library') {
+        const node = C.makeNode(drag.type, { condition: drag.condition, value: 6 });
+        C.insertNode(program, node, candidate.parentId, candidate.index);
+        insertedId = node.id;
+      } else {
+        C.moveNode(program, drag.id, candidate.parentId, candidate.index, true);
+        insertedId = drag.id;
+      }
+    }
+    if (drag.source === 'library') suppressLibraryClickUntil = performance.now() + 500;
+    cancelPointerDrag();
+    if (insertedId) {
+      const placed = [...stack.querySelectorAll('[data-id]')].find(element => element.dataset.id === insertedId);
+      placed?.classList.add('snap-in');
+      setTimeout(() => placed?.classList.remove('snap-in'), 260);
+      hideHint();
+    }
+  }
+  function onPointerDown(event) {
+    if (game.status === 'running' || event.button !== 0 || event.target.closest('button,select')) return;
+    const fromLibrary = event.target.closest('.code-block');
+    const fromProgram = event.target.closest('[data-id]');
+    if (!fromLibrary && !fromProgram) return;
+    if (fromProgram?.classList.contains('program-structure') && event.target.closest('.program-body')) return;
+    const source = fromLibrary ? 'library' : 'program';
+    const type = fromLibrary ? fromLibrary.dataset.type : C.findNode(program, fromProgram.dataset.id)?.type;
+    if (!type) return;
+    pointerDrag = {
+      pointerId: event.pointerId, source, type, condition: fromLibrary?.dataset.condition || null,
+      id: fromProgram?.dataset.id || null, sourceElement: fromLibrary || fromProgram,
+      startX: event.clientX, startY: event.clientY, started: false, candidate: null, candidateKey: null,
+      float: null, placeholder: null
+    };
+  }
+  library.addEventListener('pointerdown', onPointerDown);
+  stack.addEventListener('pointerdown', onPointerDown);
+  document.addEventListener('pointermove', event => {
+    if (!pointerDrag || event.pointerId !== pointerDrag.pointerId) return;
+    if (!pointerDrag.started && Math.hypot(event.clientX - pointerDrag.startX, event.clientY - pointerDrag.startY) >= 5) beginFloating();
+    if (pointerDrag.started) { event.preventDefault(); moveFloating(event.clientX, event.clientY); updateTarget(event.clientX, event.clientY); }
+  }, { passive: false });
+  document.addEventListener('pointerup', event => { if (pointerDrag && event.pointerId === pointerDrag.pointerId) finishPointerDrag(event.clientX, event.clientY); });
+  document.addEventListener('pointercancel', event => { if (pointerDrag && event.pointerId === pointerDrag.pointerId) cancelPointerDrag(); });
 
   // Clic añade una copia al final: alternativa accesible al arrastre, nunca una orden al avatar.
   library.addEventListener('click', event => {
     const block = event.target.closest('.code-block');
-    if (!block || game.status === 'running') return;
+    if (!block || game.status === 'running' || performance.now() < suppressLibraryClickUntil) return;
     C.insertNode(program, C.makeNode(block.dataset.type, { condition: block.dataset.condition || null, value: 6 }));
     renderProgram(); hideHint();
   });
@@ -169,19 +259,6 @@
     const node = C.findNode(program, id);
     node.value = Number(event.target.value); C.validateProgram(program);
   });
-  trash.addEventListener('dragover', event => {
-    const data = dragData(event);
-    if (data?.source !== 'program' || game.status === 'running') return;
-    event.preventDefault(); trash.classList.add('drop-into'); event.dataTransfer.dropEffect = 'move';
-  });
-  trash.addEventListener('dragleave', () => trash.classList.remove('drop-into'));
-  trash.addEventListener('drop', event => {
-    event.preventDefault(); trash.classList.remove('drop-into');
-    const data = dragData(event);
-    if (data?.source !== 'program' || game.status === 'running') return;
-    dragPayload = null; C.removeNode(program, data.id); renderProgram();
-  });
-
   function renderGame() {
     const px = scene.clientHeight;
     hero.style.left = `${game.x * 100}%`;
@@ -234,5 +311,5 @@
   $('#clearBtn').addEventListener('click', () => { program = []; renderProgram(); resetWorld(); });
   window.addEventListener('resize', renderGame);
 
-  seedProgram(); renderProgram(); resetWorld();
+  renderProgram(); resetWorld();
 })();

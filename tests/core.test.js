@@ -30,10 +30,23 @@ test('programa con sensores reales supera caja, hueco y Bug', () => {
 
 test('otra secuencia válida también puede llegar, sin solución única codificada', () => {
   const nodes = winningProgram();
-  // Cambia acciones y orden sin editar el motor: la última condición tiene dos acciones.
-  nodes[4].actions.push(C.makeNode(C.TYPES.CROUCH));
+  // Una estrategia diferente esquiva al Bug con salto, sin usar el Pulso de Código.
+  nodes[4].actions = [C.makeNode(C.TYPES.JUMP)];
   const game = simulate(nodes);
   assert.equal(game.outcome, 'goal');
+  assert.equal(game.bugAlive, true);
+});
+
+test('las reglas SI no esperan ni dependen del orden físico de las amenazas', () => {
+  const nodes = [
+    branch(C.CONDITIONS.ENEMY_NEAR, C.TYPES.SHOOT),
+    branch(C.CONDITIONS.GAP_AHEAD, C.TYPES.JUMP),
+    C.makeNode(C.TYPES.RUN),
+    branch(C.CONDITIONS.OBSTACLE_AHEAD, C.TYPES.JUMP)
+  ];
+  const game = simulate(nodes);
+  assert.equal(game.outcome, 'goal');
+  assert.equal(game.pc, nodes.length);
 });
 
 test('CORRE sin condiciones choca con la caja', () => {
@@ -86,7 +99,7 @@ test('sensores dependen del mundo y no de un resultado predeterminado', () => {
   assert.equal(C.sensor(game, C.CONDITIONS.GAP_AHEAD), true);
   game.x = .23;
   assert.equal(C.sensor(game, C.CONDITIONS.OBSTACLE_AHEAD), true);
-  game.x = .61;
+  game.x = .67;
   assert.equal(C.sensor(game, C.CONDITIONS.ENEMY_NEAR), true);
   game.bugAlive = false;
   assert.equal(C.sensor(game, C.CONDITIONS.ENEMY_NEAR), false);
