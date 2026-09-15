@@ -188,7 +188,7 @@
     /* ENEMIES */
     .enemy { position: absolute; z-index: 7; }
     .enemy-label { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); white-space: nowrap; font: 800 9px ui-monospace,monospace; letter-spacing: .08em; color: #c5cee2; opacity: .86; }
-    .bug { left: 69%; bottom: 24%; width: 50px; height: 38px; border: 2px solid var(--pink); background: linear-gradient(145deg, #66244f, #23142f); border-radius: 16px 18px 7px 7px; box-shadow: 0 0 25px rgba(255,77,166,.28); animation: enemyIdle 1.8s ease-in-out infinite alternate; }
+    .bug { left: 75%; bottom: 24%; width: 50px; height: 38px; border: 2px solid var(--pink); background: linear-gradient(145deg, #66244f, #23142f); border-radius: 16px 18px 7px 7px; box-shadow: 0 0 25px rgba(255,77,166,.28); animation: enemyIdle 1.8s ease-in-out infinite alternate; }
     .bug::before { content: "×  ×"; position: absolute; top: 6px; left: 9px; color: #ff9dc9; font: 900 9px ui-monospace,monospace; letter-spacing: 7px; }
     .bug::after { content: ""; position: absolute; inset: -7px -9px auto; height: 16px; border-left: 2px solid var(--pink); border-right: 2px solid var(--pink); transform: skewY(-32deg); }
     .glitch { left: 76%; bottom: 68%; width: 54px; height: 29px; background: linear-gradient(90deg, var(--violet), var(--pink)); clip-path: polygon(0 25%,22% 25%,22% 0,75% 0,75% 18%,100% 18%,90% 78%,61% 78%,61% 100%,18% 100%); box-shadow: 9px 5px 0 rgba(54,228,255,.22), -6px -3px 0 rgba(255,77,166,.16); animation: glitchFloat 2.3s steps(2,end) infinite; }
@@ -253,21 +253,7 @@
     .control-btn:hover { color: white; border-color: rgba(158,177,219,.4); transform: translateY(-1px); }
     .control-btn.primary { height: 38px; min-width: 132px; color: #06111b; border: 0; background: linear-gradient(105deg, var(--cyan), #77b5ff); box-shadow: 0 0 26px rgba(54,228,255,.22); font-size: 10px; }
     .control-btn.stop { color: rgba(255,93,117,.72); }
-    .control-btn.ghost { min-width: auto; color: #65728d; border-color: transparent; background: transparent; }
     .control-spacer { flex: 1; }
-
-    /* END SCREEN */
-    .end-screen { position: fixed; inset: 0; z-index: 45; display: grid; place-items: center; background: rgba(4,7,15,.94); backdrop-filter: blur(16px); opacity: 0; visibility: hidden; transition: .55s; }
-    .end-screen.is-visible { opacity: 1; visibility: visible; }
-    .end-card { width: min(760px, 76vw); text-align: center; position: relative; padding: 65px 55px; border: 1px solid rgba(54,228,255,.22); background: radial-gradient(circle at 50% 0,rgba(54,228,255,.1),transparent 40%),#090f1e; clip-path: polygon(18px 0,100% 0,100% calc(100% - 18px),calc(100% - 18px) 100%,0 100%,0 18px); box-shadow: 0 34px 100px rgba(0,0,0,.5); }
-    .end-card::before, .end-card::after { content: ""; position: absolute; width: 46px; height: 3px; background: var(--cyan); box-shadow: 0 0 16px var(--cyan); }
-    .end-card::before { left: 0; top: 0; } .end-card::after { right: 0; bottom: 0; }
-    .end-icon { width: 62px; height: 62px; margin: auto auto 32px; display: grid; place-items: center; border-radius: 50%; border: 1px solid rgba(157,255,117,.5); color: var(--lime); box-shadow: 0 0 35px rgba(157,255,117,.12); font-size: 28px; }
-    .end-card h2 { font-size: clamp(46px,6vw,76px); letter-spacing: -.06em; line-height: .9; margin: 0 0 25px; }
-    .end-card p { max-width: 620px; margin: 0 auto 34px; color: #aeb9d0; line-height: 1.65; font-size: 16px; }
-    .end-card p b { color: var(--ink); }
-    .end-card .next-level { color: var(--cyan); font: 700 9px ui-monospace,monospace; letter-spacing: .14em; }
-    .close-end { position: absolute; top: 16px; right: 17px; border: 0; background: transparent; color: #77839e; cursor: pointer; font-size: 20px; }
 
     @keyframes gridFlow { to { transform: perspective(500px) rotateX(62deg) translateY(33%) translateX(44px); } }
     @keyframes drift { to { transform: translateY(-7px); } }
@@ -301,6 +287,62 @@
       .socket { height: 15px; }
     }
     @media (prefers-reduced-motion: reduce) { *,*::before,*::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; } }
+
+    /* Sprint 01: interacción sobre las piezas aprobadas en Sprint 00. */
+    .library, .workspace { min-height: 0; }
+    .workspace { overflow: hidden; }
+    .code-block { cursor: grab; }
+    .code-block, .program-piece, .program-structure { touch-action: none; user-select: none; }
+    .code-block:active, .program-piece:active, .program-structure:active { cursor: grabbing; }
+    .program-canvas { overflow: auto; justify-content: center; padding-block: 8px; }
+    .program-stack { min-height: 100%; justify-content: flex-start; width: min(720px, 94%); gap: 5px; }
+    .program-stack:empty::after { content: "ARRASTRA BLOQUES AQUÍ PARA CREAR TU PROGRAMA"; display: grid; place-items: center; min-height: 180px; padding: 20px; color: #8594b4; text-align: center; border: 2px dashed rgba(54,228,255,.3); border-radius: 12px; font: 800 12px ui-monospace,monospace; letter-spacing: .06em; }
+    .program-piece, .program-structure { cursor: grab; flex: 0 0 auto; }
+    .program-piece { min-height: 34px; }
+    .program-structure { min-height: 66px; padding-block: 5px; }
+    .program-title { height: 21px; }
+    .program-body { min-height: 28px; margin-top: 3px; }
+    .program-body .program-piece { min-height: 27px; }
+    .program-body:empty::after { content: "SUELTA UNA ACCIÓN AQUÍ"; display: grid; place-items: center; min-height: 28px; color: #8893b7; border: 1px dashed rgba(138,108,255,.48); border-radius: 5px; font: 800 10px ui-monospace,monospace; }
+    .program-piece .delete-block, .program-title .delete-block { margin-left: auto; flex: 0 0 auto; border: 0; background: transparent; color: #7d8aa6; padding: 4px 6px; cursor: pointer; font-size: 17px; line-height: 1; }
+    .program-piece .delete-block:hover, .program-title .delete-block:hover { color: var(--danger); }
+    .program-title::after { display: none; }
+    .program-piece select { margin-left: auto; border: 1px solid rgba(157,255,117,.35); border-radius: 4px; background: #0b1722; color: var(--lime); padding: 3px 10px; font: 800 13px ui-monospace,monospace; cursor: pointer; }
+    .program-piece select + .delete-block { margin-left: 0; }
+    .program-piece.drop-before, .program-structure.drop-before { outline: 3px solid var(--cyan); outline-offset: 2px; }
+    .program-piece.drop-after, .program-structure.drop-after { border-bottom: 4px solid var(--cyan); }
+    .program-body.drop-into, .program-stack.drop-into { background: rgba(54,228,255,.08); outline: 2px dashed var(--cyan); outline-offset: 3px; }
+    .trash-zone { min-width: 110px; height: 32px; display: grid; place-items: center; border: 1px dashed rgba(255,93,117,.37); color: #9d7891; background: rgba(255,93,117,.04); font: 800 9px ui-monospace,monospace; }
+    .trash-zone.drop-into { border-color: var(--danger); background: rgba(255,93,117,.16); color: white; }
+    .trash-zone.is-target { border-color: var(--danger); background: rgba(255,93,117,.2); color: white; box-shadow: 0 0 20px rgba(255,93,117,.16); }
+    .drag-float { position: fixed !important; z-index: 100; left: 0; top: 0; margin: 0 !important; pointer-events: none !important; cursor: grabbing; opacity: .95; box-shadow: 0 22px 56px rgba(0,0,0,.65), 0 0 28px rgba(54,228,255,.22) !important; filter: brightness(1.24); transform-origin: 30% 50%; will-change: transform; }
+    .drag-float.program-structure { min-height: 70px; }
+    .source-copying { filter: brightness(1.35); }
+    .drag-placeholder { flex: 0 0 auto; display: grid; place-items: center; min-height: 34px; border: 2px dashed var(--cyan); border-radius: 6px; background: linear-gradient(90deg, rgba(54,228,255,.17), rgba(138,108,255,.08)); box-shadow: inset 0 0 24px rgba(54,228,255,.12), 0 0 20px rgba(54,228,255,.14); pointer-events: none; animation: placeholderGlow .9s ease-in-out infinite alternate; }
+    .drag-placeholder::after { content: attr(data-slot); color: #d9faff; font: 900 11px ui-monospace,monospace; letter-spacing: .14em; }
+    .program-body .drag-placeholder { margin-top: 4px; min-height: 28px !important; border-color: var(--violet); background: rgba(138,108,255,.18); }
+    .dragging-action .program-body { border-left-color: var(--cyan); box-shadow: inset 0 0 14px rgba(54,228,255,.08); }
+    .dragging-action .program-body:empty::after { border-color: var(--cyan); color: #c4edff; }
+    .program-body.is-target { border-left: 4px solid var(--cyan); background: rgba(54,228,255,.12); box-shadow: 0 0 22px rgba(54,228,255,.17); }
+    .program-piece.snap-in, .program-structure.snap-in { animation: snapIn .24s cubic-bezier(.18,.8,.2,1) both; }
+    .is-pointer-dragging, .is-pointer-dragging * { cursor: grabbing !important; }
+    .run-feedback { position: absolute; z-index: 12; top: 19px; right: 24px; max-width: 330px; padding: 9px 13px; border-left: 3px solid var(--cyan); background: rgba(4,9,22,.88); color: #e7f3ff; backdrop-filter: blur(10px); box-shadow: 0 12px 30px rgba(0,0,0,.25); font: 750 11px/1.4 ui-monospace,monospace; opacity: 0; transform: translateY(-8px); transition: .24s; pointer-events: none; }
+    .run-feedback.is-visible { opacity: 1; transform: none; }
+    .hero-wrap { transition: none; }
+    .hero-wrap.fallen { opacity: .6; filter: grayscale(.55); }
+    .library.is-running, .program-canvas.is-running { pointer-events: none; }
+    @keyframes placeholderGlow { to { filter: brightness(1.55); } }
+    @keyframes snapIn { 0% { transform: scale(.95) translateY(-6px); filter: brightness(1.7); } 70% { transform: scale(1.012) translateY(1px); } 100% { transform: scale(1); filter: none; } }
+    @media (max-height: 780px) {
+      .program-canvas { padding-block: 6px; }
+      .program-stack { min-height: 100%; gap: 3px; }
+      .program-piece { min-height: 27px; padding-block: 4px; font-size: 10px; }
+      .program-structure { min-height: 55px; padding: 3px 6px 3px 8px; }
+      .program-title { height: 17px; font-size: 10px; }
+      .program-body { min-height: 22px; margin-top: 2px; }
+      .program-body .program-piece { min-height: 22px; }
+      .trash-zone { min-width: 82px; }
+    }
   </style>
 </head>
 <body>
@@ -361,6 +403,7 @@
         </svg>
         <div class="route-label">RUTA DIGITAL · CAMPUS</div>
         <div class="route-id">RUTA 01</div>
+        <div class="run-feedback" id="runFeedback" aria-live="polite"></div>
         <div class="ground ground-left"></div><div class="ground ground-right"></div><div class="route-gap" aria-label="Hueco en la ruta"><span>⌄</span></div><div class="platform p1"></div><div class="platform p2"></div>
         <div class="screen-prop"></div><div class="crate"></div><div class="checkpoint"></div>
 
@@ -392,126 +435,27 @@
       <aside class="library">
         <header class="deck-header"><div class="deck-title"><i></i>BIBLIOTECA DE BLOQUES</div></header>
         <div class="block-bank" id="blockBank">
-          <div class="code-block motion"><i>»</i>CORRE</div><div class="code-block motion"><i>↑</i>SALTA</div><div class="code-block motion"><i>↓</i>AGÁCHATE</div>
-          <div class="code-block action"><i>◉</i>DISPARA</div><div class="code-block action"><i>■</i>DETENTE</div><div class="code-block value"><i>#</i>VELOCIDAD = 6</div>
-          <div class="code-block structural logic"><div class="structure-head"><i>?</i>SI HAY OBSTÁCULO</div><span class="socket"></span></div>
-          <div class="code-block structural logic"><div class="structure-head"><i>?</i>SI HAY HUECO</div><span class="socket"></span></div>
-          <div class="code-block structural logic"><div class="structure-head"><i>?</i>SI HAY ENEMIGO</div><span class="socket"></span></div>
-          <div class="code-block structural loop"><div class="structure-head"><i>↻</i>REPETIR 3 VECES</div><span class="socket"></span></div>
-          <div class="code-block structural loop"><div class="structure-head"><i>∀</i>PARA CADA ENEMIGO</div><span class="socket"></span></div>
+          <div class="code-block motion" data-type="RUN"><i>»</i>CORRE</div><div class="code-block motion" data-type="JUMP"><i>↑</i>SALTA</div><div class="code-block motion" data-type="CROUCH"><i>↓</i>AGÁCHATE</div>
+          <div class="code-block action" data-type="SHOOT"><i>◉</i>DISPARA</div><div class="code-block action" data-type="STOP"><i>■</i>DETENTE</div><div class="code-block value" data-type="SPEED"><i>#</i>VELOCIDAD = 6</div>
+          <div class="code-block structural logic" data-type="IF" data-condition="OBSTACLE_AHEAD"><div class="structure-head"><i>?</i>SI HAY OBSTÁCULO</div><span class="socket"></span></div>
+          <div class="code-block structural logic" data-type="IF" data-condition="GAP_AHEAD"><div class="structure-head"><i>?</i>SI HAY HUECO</div><span class="socket"></span></div>
+          <div class="code-block structural logic" data-type="IF" data-condition="ENEMY_NEAR"><div class="structure-head"><i>?</i>SI HAY ENEMIGO</div><span class="socket"></span></div>
         </div>
       </aside>
       <section class="workspace">
         <header class="workspace-header"><div class="deck-title"><i></i>TU PROGRAMA</div><span class="state-pill" id="statePill">LISTO</span></header>
         <div class="program-canvas">
-          <div class="program-stack" id="programStack">
-            <div class="program-piece value" data-step="0"><i>#</i>VELOCIDAD <strong>6</strong></div>
-            <div class="program-piece motion" data-step="1"><i>»</i>CORRE</div>
-            <div class="program-structure" data-step="2">
-              <div class="program-title"><i>?</i>SI HAY HUECO</div>
-              <div class="program-body"><div class="program-piece motion" data-step="2"><i>↑</i>SALTA</div></div>
-            </div>
-            <div class="program-structure" data-step="3">
-              <div class="program-title"><i>?</i>SI HAY ENEMIGO</div>
-              <div class="program-body"><div class="program-piece action" data-step="3"><i>◉</i>DISPARA</div></div>
-            </div>
-          </div>
+          <div class="program-stack" id="programStack" aria-label="Programa construido"></div>
         </div>
         <footer class="controls">
           <button class="control-btn primary" id="runBtn">▶ EJECUTAR</button><button class="control-btn stop" id="stopBtn">■ DETENER</button><button class="control-btn" id="resetBtn">↺ REINICIAR</button><button class="control-btn" id="clearBtn">× LIMPIAR</button>
-          <span class="control-spacer"></span><button class="control-btn ghost" id="showEnd">VER CIERRE →</button>
+          <span class="control-spacer"></span><div class="trash-zone" id="trashZone">SOLTAR PARA ELIMINAR</div>
         </footer>
       </section>
     </section>
   </main>
 
-  <section class="end-screen" id="endScreen" aria-label="Cierre">
-    <div class="end-card">
-      <button class="close-end" id="closeEnd" aria-label="Cerrar">×</button>
-      <div class="end-icon">✓</div><div class="eyebrow">Checkpoint alcanzado // Secuencia completa</div>
-      <h2>LO PROGRAMASTE.</h2>
-      <p>Programar es solo una parte. <b>Ingeniería de Software</b> es convertir ideas y problemas en soluciones que funcionan.</p>
-      <div class="next-level">SIGUIENTE RETO — PRÓXIMAMENTE</div>
-    </div>
-  </section>
-
-  <script>
-    (() => {
-      const intro = document.querySelector('#intro');
-      const slides = [...document.querySelectorAll('.intro-slide')];
-      const dots = [...document.querySelectorAll('.intro-dots span')];
-      const hero = document.querySelector('#hero');
-      const actionChip = document.querySelector('#actionChip');
-      const progressBar = document.querySelector('#progressBar');
-      const hudState = document.querySelector('#hudState');
-      const statePill = document.querySelector('#statePill');
-      const programStack = document.querySelector('#programStack');
-      const lines = [...document.querySelectorAll('.program-piece, .program-structure')];
-      const endScreen = document.querySelector('#endScreen');
-      let introStep = 0;
-      let timers = [];
-      let running = false;
-
-      // Parámetro útil para revisar el prototipo sin alterar su flujo normal.
-      if (new URLSearchParams(location.search).has('skip-intro')) intro.classList.add('is-done');
-
-      function showSlide(index) {
-        introStep = Math.min(index, slides.length - 1);
-        slides.forEach((slide, i) => slide.classList.toggle('is-active', i === introStep));
-        dots.forEach((dot, i) => dot.classList.toggle('on', i === introStep));
-      }
-      document.querySelectorAll('[data-next]').forEach(btn => btn.addEventListener('click', () => showSlide(introStep + 1)));
-      document.querySelector('#startGame').addEventListener('click', () => intro.classList.add('is-done'));
-
-      function later(fn, delay) { const id = setTimeout(fn, delay); timers.push(id); }
-      function cancelRun() { timers.forEach(clearTimeout); timers = []; running = false; lines.forEach(line => line.classList.remove('is-active')); hero.className = 'hero-wrap'; }
-      function activate(step, pose, label, progress) {
-        lines.forEach(line => line.classList.toggle('is-active', Number(line.dataset.step) === step));
-        hero.className = `hero-wrap ${pose}`;
-        actionChip.textContent = label;
-        progressBar.style.width = `${progress}%`;
-      }
-      function resetVisuals() {
-        cancelRun();
-        hero.className = 'hero-wrap'; hero.style.left = ''; progressBar.style.width = '18%'; hudState.textContent = 'LISTO';
-        statePill.textContent = 'LISTO'; statePill.classList.remove('running');
-        programStack.classList.remove('is-cleared'); document.querySelectorAll('.enemy').forEach(e => e.classList.remove('hit'));
-      }
-      function runSequence() {
-        if (running) return;
-        resetVisuals(); running = true; statePill.textContent = 'EJECUTANDO'; statePill.classList.add('running'); hudState.textContent = 'EJECUTANDO';
-        activate(0, '', 'VELOCIDAD 6', 24);
-        later(() => activate(1, 'running', 'CORRIENDO', 39), 800);
-        // Coreografía fija para la maqueta: supera la caja antes de llegar al hueco.
-        later(() => { hero.className = 'hero-wrap jumping'; hero.style.left = '28%'; actionChip.textContent = 'OBSTÁCULO'; }, 1250);
-        later(() => { hero.style.left = '45%'; }, 1600);
-        later(() => { hero.className = 'hero-wrap running'; actionChip.textContent = 'CORRIENDO'; }, 2200);
-        later(() => activate(2, 'jumping', 'SALTANDO', 57), 2350);
-        later(() => { hero.style.left = '63%'; }, 2750);
-        later(() => activate(3, 'shooting', 'PULSO DE CÓDIGO', 76), 3650);
-        later(() => document.querySelector('#bug').classList.add('hit'), 4250);
-        later(() => { hero.className = 'hero-wrap running arrived'; hero.style.left = '86%'; actionChip.textContent = 'META'; progressBar.style.width = '100%'; }, 4850);
-        later(() => { running = false; lines.forEach(l => l.classList.remove('is-active')); statePill.textContent = 'COMPLETO'; hudState.textContent = 'COMPLETO'; endScreen.classList.add('is-visible'); }, 6250);
-      }
-
-      document.querySelector('#runBtn').addEventListener('click', runSequence);
-      document.querySelector('#stopBtn').addEventListener('click', () => { cancelRun(); statePill.textContent = 'DETENIDO'; hudState.textContent = 'PAUSA'; });
-      document.querySelector('#resetBtn').addEventListener('click', resetVisuals);
-      document.querySelector('#clearBtn').addEventListener('click', () => { cancelRun(); programStack.classList.add('is-cleared'); statePill.textContent = 'VACÍO'; });
-      document.querySelector('#showEnd').addEventListener('click', () => endScreen.classList.add('is-visible'));
-      document.querySelector('#closeEnd').addEventListener('click', () => endScreen.classList.remove('is-visible'));
-      document.querySelector('#blockBank').addEventListener('click', event => {
-        const block = event.target.closest('.code-block');
-        if (!block) return;
-        block.classList.remove('is-picked'); void block.offsetWidth; block.classList.add('is-picked');
-        if (running) return;
-        const label = block.textContent.trim().replace(/\s+/g,' ');
-        const previews = { CORRE: 'running', SALTA: 'jumping', 'AGÁCHATE': 'crouching', DISPARA: 'shooting' };
-        const pose = previews[label];
-        if (pose) { hero.className = `hero-wrap ${pose}`; actionChip.textContent = label; later(() => { if (!running) hero.className = 'hero-wrap'; }, 900); }
-      });
-      document.addEventListener('keydown', event => { if (event.key === 'Escape') endScreen.classList.remove('is-visible'); if (event.key === 'Enter' && !intro.classList.contains('is-done')) introStep < 2 ? showSlide(introStep + 1) : intro.classList.add('is-done'); });
-    })();
-  </script>
+  <script src="core.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
